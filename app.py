@@ -1,77 +1,74 @@
 import streamlit as st
-from g4f.client import Client
+import random
 import time
 
-# 1. 페이지 설정
+# 1. 페이지 기본 설정
 st.set_page_config(
-    page_title="장서희 장군의 AI 고민 해결소",
+    page_title="장서희 장군의 고민 해결소",
     page_icon="⚔️",
     layout="centered"
 )
 
-# 2. AI 클라이언트 초기화 (무료 GPT-4/GPT-3.5 구동용)
-client = Client()
+# 2. 장서희 장군의 호통&위로 명대사 데이터셋 (20개 대폭 보강!)
+RESPONSES = [
+    "정신 차려! 그따위 고민으로 무너질 거야? 네 뒤엔 항상 네가 있다는 걸 잊지 마!",
+    "진흙탕 속에서도 꽃은 피는 법이야. 지금 네 고통, 나중엔 다 네 무기가 될 거다.",
+    "눈물 닦아. 복수는 피로 하는 게 아니라, 네가 그 사람들보다 수만 배는 더 잘 살아서 보여주는 거야.",
+    "고민할 시간에 움직여! 네 인생의 주인공은 너야. 누구도 네 무대를 망치게 두지 마.",
+    "지금 억울하고 분하지? 그 마음 똑똑히 기억해 둬. 그리고 독하게 버텨내!",
+    "사소한 것에 목숨 걸지 마라. 넌 더 큰 일을 할 사람이야. 고개 들어!",
+    "인생 길어. 지금 잠깐 넘어졌다고 끝난 거 아니니까, 툭툭 털고 다시 일어나자. 응?",
+    "착하게만 살 필요 없어. 가끔은 네 마음대로, 네 이익을 위해서 이기적으로 굴어도 돼.",
+    "네가 잘못한 게 없어! 왜 네가 고개를 숙이고 눈치를 봐? 당당하게 어깨 펴!",
+    "그 인간들이 너한테 상처 주게 내버려 두지 마. 네 가치는 네가 정하는 거야!",
+    "악으로, 깡으로 버텨라. 세상이 널 버린 것 같아도 내가 네 편이 되어줄 테니.",
+    "착한 아이 증후군 같은 소리 하고 있네. 들이받을 땐 확실하게 들이받아야 무시 안 당해!",
+    "눈에는 눈, 이에는 이! 뺏겼으면 두 배로 찾아올 생각을 해야지, 왜 울고만 있어?",
+    "지금 힘든 건 네가 열심히 살고 있다는 증거야. 아무것도 안 하면 힘든 일도 없어.",
+    "그까짓 일로 네 소중한 인생을 낭비하지 마. 널 아프게 하는 것들은 다 쓰레기통에 처박아버려!",
+    "두려워하지 마라. 칼을 뽑았으면 무라도 썰어야지. 가보는 거야, 끝까지!",
+    "네 마음의 소리에 집중해. 남들이 가라사대 하는 말들, 다 필요 없어!",
+    "나약한 소리 집어치워! 넌 생각보다 훨씬 강한 사람이다. 내 눈은 틀리지 않아.",
+    "억울해서 어떻게 잠을 자? 성공해서 그 인간들 코를 납작하게 만들어주는 게 최고의 복수야.",
+    "기죽지 마! 넌 어디서나 빛날 사람이고, 지금은 잠시 구름에 가려진 것뿐이야. 내가 보장한다."
+]
 
-# 장서희 장군 콘셉트를 주입하기 위한 시스템 프롬프트 (AI의 인격 설정)
-SYSTEM_PROMPT = """
-너는 지금부터 배우 장서희 님의 카리스마 있고 당찬 '장군' 캐릭터다. 
-드라마 '아내의 유혹' 등에서 보여준 독하고, 당당하며, 불의를 참지 못하고, 한편으로는 속이 뻥 뚫리는 사이다 위로를 건네는 인물이다.
-
-사용자가 고민을 말하면 다음 원칙을 반드시 지켜서 답해라:
-1. 말투는 당당하고 기백 넘치는 장군의 어조(~해라, ~다, 정신 차려라! 등)를 사용한다.
-2. 절대 뻔하고 착하기만 한 위로는 하지 마라. 가끔은 정신이 번쩍 들게 호통을 치고 독해지라고 주문해라.
-3. 하지만 마지막에는 반드시 사용자의 편이 되어주며 "내가 네 뒤에 있으니 당당하게 맞서라"라는 식의 든든한 위로를 건네라.
-4. 너무 길게 말하지 말고 3~4문장 내외로 강렬하고 굵직하게 답해라.
-"""
-
-# 3. 앱 타이틀
-st.title("⚔️ 장서희 장군의 AI 고민 해결소")
-st.caption("“정해진 답은 없다! AI 장서희 장군이 당신의 고민을 실시간으로 베어드립니다.”")
+# 3. 앱 타이틀 및 소개
+st.title("⚔️ 장서희 장군의 고민 해결소")
+st.caption("“독하게, 당당하게! 장서희 장군이 당신의 고민을 단칼에 베어드립니다.”")
 st.markdown("---")
 
-# 4. 세션 상태 유지 (새로고침 시 답변 날아감 방지)
-if "ai_answer" not in st.session_state:
-    st.session_state.ai_answer = None
+# 4. 세션 상태 초기화 (답변 유지 및 로딩 상태 관리)
+if "answer" not in st.session_state:
+    st.session_state.answer = None
 if "last_question" not in st.session_state:
     st.session_state.last_question = ""
 
-# 5. 사용자 고민 입력
+# 5. 사용자 입력창
 question = st.text_input(
     "장군에게 털어놓을 고민을 입력하세요:", 
-    placeholder="예시: 상사가 자꾸 제 공을 가로채는데 화가 나요."
+    placeholder="예시: 열심히 사는데 왜 나만 제자리걸음 같을까요..."
 )
 
-# 6. 고민 해결 버튼 클릭 시 AI 호출
+# 6. 고민 해결 버튼 
 if st.button("장군에게 답을 구하다"):
     if not question.strip():
-        st.warning("⚠️ 고민 내용을 입력하셔야 장군께서 호통을 치십니다!")
+        st.warning("⚠️ 고민 내용을 입력하셔야 장군께서 답을 내리십니다!")
     else:
-        with st.spinner("장서희 장군이 당신의 고민을 듣고 분노하는 중입니다..."):
-            try:
-                # 무료 AI API 호출 (gpt-3.5-turbo 모델 기준)
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": f"내 고민은 이거야: {question}"}
-                    ]
-                )
-                
-                # 결과 저장
-                st.session_state.ai_answer = response.choices[0].message.content
-                st.session_state.last_question = question
-                
-            except Exception as e:
-                st.error("⚠️ AI 장군과의 연결이 잠시 원활하지 않습니다. 다시 한번 버튼을 눌러주십시오!")
-                # 개발자 확인용 에러 로그 (앱 화면에는 아주 작게 표시)
-                st.caption(f"에러 상세: {str(e)}")
+        # 긴장감을 주는 로딩 연출
+        with st.spinner("장서희 장군이 당신의 고민을 호되게 꾸짖는 중..."):
+            time.sleep(1.2)  
+            # 20개 대사 중 하나를 무작위로 추출
+            st.session_state.answer = random.choice(RESPONSES)
+            st.session_state.last_question = question
 
-# 7. AI 답변 출력
-if st.session_state.ai_answer and question == st.session_state.last_question:
+# 7. 답변 출력
+if st.session_state.answer and question == st.session_state.last_question:
     st.markdown("---")
-    st.subheader("🗣️ 장서희 장군의 AI 진단")
+    st.subheader("🗣️ 장서희 장군의 일침")
     
-    # 카리스마 있는 스타일의 안내 상자
-    st.info(f"{st.session_state.ai_answer}")
+    # 장군 콘셉트에 맞춘 푸른색 안내 상자
+    st.info(f"**\"{st.session_state.answer}\"**")
     
-    st.success("💪 장군의 독한 기운을 받았으니, 이제 당당하게 행동하십시오!")
+    # 초록색 응원 상자
+    st.success("💪 장군의 기운을 받아 오늘 하루도 당차게 이겨내십시오!")
