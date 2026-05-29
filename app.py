@@ -1,4 +1,4 @@
-import streamlit as str
+import streamlit as st  # str -> st 로 올바르게 수정했습니다!
 import random
 import time
 
