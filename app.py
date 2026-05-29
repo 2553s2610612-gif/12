@@ -1,3 +1,3 @@
 import streamlit as st
-st.title('코다페')
-st.write('김하늘')
+st.title('장서희')
+st.write('장군')
