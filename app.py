@@ -1,3 +1,3 @@
 import streamlit as st
-st.title('나는 라뽀다')
-st.write('신신쌓')
+st.title('집가고싶다')
+st.write('유선아')
