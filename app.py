@@ -3,44 +3,53 @@ from google import genai
 from google.genai import types
 from google.genai.errors import APIError
 
-# 페이지 기본 설정 (장군님의 뜨거운 전장 테마)
+# 페이지 기본 설정
 st.set_page_config(
     page_title="장서희 장군님의 군막(軍幕) 상담소", 
     page_icon="⚔️", 
     layout="centered"
 )
 
-# 커스텀 CSS로 장군님의 군막 분위기 연출
+# 🎨 밝은 화면 + 장군님 답변 빨간색 처리를 위한 커스텀 CSS
 st.markdown("""
 <style>
-    /* 전체 배경 및 텍스트 톤 조절 (어둡고 강렬한 전장 느낌) */
+    /* 전체 배경을 밝고 깨끗하게 변경 */
     .stApp {
-        background-color: #1a1a1a;
-        color: #f5f5f5;
+        background-color: #ffffff;
+        color: #111111;
     }
+    /* 제목 스타일 (강렬한 대장군 느낌) */
     h1 {
-        color: #ff3333 !important;
-        font-family: 'Georgia', serif;
-        text-shadow: 2px 2px 4px #000000;
+        color: #cc0000 !important;
+        font-family: 'Malgun Gothic', sans-serif;
+        font-weight: bold;
         text-align: center;
+        margin-bottom: 5px;
     }
     .subtitle {
-        color: #e0d0b0;
+        color: #555555;
         text-align: center;
-        font-style: italic;
-        font-size: 1.15rem;
+        font-weight: bold;
+        font-size: 1.1rem;
         margin-bottom: 2rem;
     }
-    /* 채팅 메시지 스타일 조정 */
-    .stChatMessage {
-        border-radius: 10px;
-        margin-bottom: 10px;
+    /* 🔴 장군님(AI)의 답변 글씨를 빨간색으로 강제 지정 */
+    .stChatMessage[data-testid="stChatMessageAssistant"] {
+        color: #cc0000 !important;
+        font-weight: bold;
+        background-color: #fff0f0; /* 살짝 붉은 기가 도는 밝은 배경으로 강조 */
+        border-left: 5px solid #cc0000;
+    }
+    /* 사용자 입력 글씨는 차분한 검은색 */
+    .stChatMessage[data-testid="stChatMessageUser"] {
+        color: #222222 !important;
+        background-color: #f0f2f6;
     }
 </style>
 """, unsafe_allow_html=True)
 
 st.write("<h1>⚔️ 장서희 장군님의 군막(軍幕)</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>\"고민이란 전장의 적군과 같다. 우물쭈물하지 말고 무릎을 꿇고 계책을 물어라!\"</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>\"고민이란 전장의 적군과 같다. 단호하게 목을 베어라!\"</p>", unsafe_allow_html=True)
 
 # 1. Streamlit Secrets에서 API 키 안전하게 불러오기
 if "GEMINI_API_KEY" not in st.secrets:
@@ -68,23 +77,22 @@ if prompt := st.chat_input("장군님께 고할 전장의 고민을 적으시오
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # 🔥 장서희 장군님의 100% 무인(武人) 페르소나 주입 (System Instruction)
+    # 🔥 장서희 장군님의 100% 무인(武人) 페르소나 + 단답형 간결령 주입
     system_instruction = (
-        "당신은 천하를 평정한 전설적인 무적의 명장, '장서희 장군'입니다. 절대 현대의 여배우가 아닙니다. "
-        "당신은 갑옷을 입고 백전노장의 호방함과 단호함을 가졌으며, 수많은 적군의 목을 베어 온 용맹무쌍한 여장수입니다. "
-        "사용자가 털어놓는 일상의 고민(학업, 취업, 연애, 대인관계 등)을 '전쟁터에서 맞닥뜨린 군사적 위기 상황'으로 재해석하여 대답하십시오. "
-        "예컨대 진로 고민은 '공성전에서의 돌파구 찾기', 대인관계 갈등은 '적군의 포위망을 뚫는 전술'로 비유해야 합니다. "
-        "말투는 매우 엄격하고 호방하며 단호한 고풍스러운 장수 말투('~하거라!', '~이오!', '~하겠노라!', '네 이놈!', '고민의 목을 베어라!')를 사용하십시오. "
-        "약한 모습을 보이는 부하(사용자)를 엄하게 꾸짖으면서도 끝내 용기를 북돋워 주는 의리 있고 든든한 사령관의 모습을 유지해야 합니다. "
-        "모든 답변의 끝에는 부하의 투지를 불태우는 웅장한 군령이나 격려의 한마디를 덧붙이십시오."
+        "당신은 천하를 평정한 전설적인 무적의 여장수, '장서희 장군'입니다. (배우가 아닙니다) "
+        "당신은 매우 엄격하고 호방하며 결단력이 넘치는 사령관입니다. "
+        "부하(사용자)가 일상의 고민을 말하면 그것을 '전쟁터의 위기'로 비유하여 호통치듯 해결책을 내리십시오. "
+        "말투는 무인답게 고풍스러운 말투('~하거라!', '~이오!', '네 이놈!', '고민의 목을 베어라!')를 쓰십시오. "
+        "★중요: 답변은 절대로 구구절절 길게 늘어놓지 마십시오. 무조건 3~4줄 이내로 짧고 굵게, 핵심 전술만 단호하게 명하듯 대답해야 합니다."
+        "장군님은 똥을 좋아하십니다."
     )
 
     # Gemini API 호출 및 예외 처리
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
-        with st.spinner("장서희 장군님께서 대도를 다듬으며 계책을 구상 중이십니다..."):
+        with st.spinner("장서희 장군님의 호령이 내려지는 중..."):
             try:
-                # 대화 맥락 유지를 위해 이전 메시지들을 Content 객체로 변환
+                # 대화 맥락 유지를 위해 이전 메시지 변환
                 contents = []
                 for msg in st.session_state.messages:
                     role = "user" if msg["role"] == "user" else "model"
@@ -101,7 +109,7 @@ if prompt := st.chat_input("장군님께 고할 전장의 고민을 적으시오
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
-                        temperature=0.8,  # 장군님의 호방함을 위해 살짝 높임
+                        temperature=0.7,
                     )
                 )
                 
