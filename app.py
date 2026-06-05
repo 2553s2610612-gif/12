@@ -1,74 +1,118 @@
 import streamlit as st
-import random
-import time
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 
-# 1. 페이지 기본 설정
+# 페이지 기본 설정 (장군님의 뜨거운 전장 테마)
 st.set_page_config(
-    page_title="장서희 장군의 고민 해결소",
-    page_icon="⚔️",
+    page_title="장서희 장군님의 군막(軍幕) 상담소", 
+    page_icon="⚔️", 
     layout="centered"
 )
 
-# 2. 장서희 장군의 호통&위로 명대사 데이터셋 (20개 대폭 보강!)
-RESPONSES = [
-    "정신 차려! 그따위 고민으로 무너질 거야? 네 뒤엔 항상 네가 있다는 걸 잊지 마!",
-    "진흙탕 속에서도 꽃은 피는 법이야. 지금 네 고통, 나중엔 다 네 무기가 될 거다.",
-    "눈물 닦아. 복수는 피로 하는 게 아니라, 네가 그 사람들보다 수만 배는 더 잘 살아서 보여주는 거야.",
-    "고민할 시간에 움직여! 네 인생의 주인공은 너야. 누구도 네 무대를 망치게 두지 마.",
-    "지금 억울하고 분하지? 그 마음 똑똑히 기억해 둬. 그리고 독하게 버텨내!",
-    "사소한 것에 목숨 걸지 마라. 넌 더 큰 일을 할 사람이야. 고개 들어!",
-    "인생 길어. 지금 잠깐 넘어졌다고 끝난 거 아니니까, 툭툭 털고 다시 일어나자. 응?",
-    "착하게만 살 필요 없어. 가끔은 네 마음대로, 네 이익을 위해서 이기적으로 굴어도 돼.",
-    "네가 잘못한 게 없어! 왜 네가 고개를 숙이고 눈치를 봐? 당당하게 어깨 펴!",
-    "그 인간들이 너한테 상처 주게 내버려 두지 마. 네 가치는 네가 정하는 거야!",
-    "악으로, 깡으로 버텨라. 세상이 널 버린 것 같아도 내가 네 편이 되어줄 테니.",
-    "착한 아이 증후군 같은 소리 하고 있네. 들이받을 땐 확실하게 들이받아야 무시 안 당해!",
-    "눈에는 눈, 이에는 이! 뺏겼으면 두 배로 찾아올 생각을 해야지, 왜 울고만 있어?",
-    "지금 힘든 건 네가 열심히 살고 있다는 증거야. 아무것도 안 하면 힘든 일도 없어.",
-    "그까짓 일로 네 소중한 인생을 낭비하지 마. 널 아프게 하는 것들은 다 쓰레기통에 처박아버려!",
-    "두려워하지 마라. 칼을 뽑았으면 무라도 썰어야지. 가보는 거야, 끝까지!",
-    "네 마음의 소리에 집중해. 남들이 가라사대 하는 말들, 다 필요 없어!",
-    "나약한 소리 집어치워! 넌 생각보다 훨씬 강한 사람이다. 내 눈은 틀리지 않아.",
-    "억울해서 어떻게 잠을 자? 성공해서 그 인간들 코를 납작하게 만들어주는 게 최고의 복수야.",
-    "기죽지 마! 넌 어디서나 빛날 사람이고, 지금은 잠시 구름에 가려진 것뿐이야. 내가 보장한다."
-]
+# 커스텀 CSS로 장군님의 군막 분위기 연출
+st.markdown("""
+<style>
+    /* 전체 배경 및 텍스트 톤 조절 (어둡고 강렬한 전장 느낌) */
+    .stApp {
+        background-color: #1a1a1a;
+        color: #f5f5f5;
+    }
+    h1 {
+        color: #ff3333 !important;
+        font-family: 'Georgia', serif;
+        text-shadow: 2px 2px 4px #000000;
+        text-align: center;
+    }
+    .subtitle {
+        color: #e0d0b0;
+        text-align: center;
+        font-style: italic;
+        font-size: 1.15rem;
+        margin-bottom: 2rem;
+    }
+    /* 채팅 메시지 스타일 조정 */
+    .stChatMessage {
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# 3. 앱 타이틀 및 소개
-st.title("⚔️ 장서희 장군의 고민 해결소")
-st.caption("“독하게, 당당하게! 장서희 장군이 당신의 고민을 단칼에 베어드립니다.”")
-st.markdown("---")
+st.write("<h1>⚔️ 장서희 장군님의 군막(軍幕)</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>\"고민이란 전장의 적군과 같다. 우물쭈물하지 말고 무릎을 꿇고 계책을 물어라!\"</p>", unsafe_allow_html=True)
 
-# 4. 세션 상태 초기화 (답변 유지 및 로딩 상태 관리)
-if "answer" not in st.session_state:
-    st.session_state.answer = None
-if "last_question" not in st.session_state:
-    st.session_state.last_question = ""
+# 1. Streamlit Secrets에서 API 키 안전하게 불러오기
+if "GEMINI_API_KEY" not in st.secrets:
+    st.error("❌ 전령 보라! 군막의 비밀 통신 키(GEMINI_API_KEY)가 Secrets에 설정되어 있지 않도다. 설정을 서두르라!")
+    st.stop()
 
-# 5. 사용자 입력창
-question = st.text_input(
-    "장군에게 털어놓을 고민을 입력하세요:", 
-    placeholder="예시: 열심히 사는데 왜 나만 제자리걸음 같을까요..."
-)
+try:
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception as e:
+    st.error(f"❌ 군막 통신망 작동 오류(클라이언트 초기화 실패): {e}")
+    st.stop()
 
-# 6. 고민 해결 버튼 
-if st.button("장군에게 답을 구하다"):
-    if not question.strip():
-        st.warning("⚠️ 고민 내용을 입력하셔야 장군께서 답을 내리십니다!")
-    else:
-        # 긴장감을 주는 로딩 연출
-        with st.spinner("장서희 장군이 당신의 고민을 호되게 꾸짖는 중..."):
-            time.sleep(1.2)  
-            # 20개 대사 중 하나를 무작위로 추출
-            st.session_state.answer = random.choice(RESPONSES)
-            st.session_state.last_question = question
+# 2. 세션 상태(Session State)로 채팅 기록 유지
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# 7. 답변 출력
-if st.session_state.answer and question == st.session_state.last_question:
-    st.markdown("---")
-    st.subheader("🗣️ 장서희 장군의 일침")
-    
-    # 장군 콘셉트에 맞춘 푸른색 안내 상자
-    st.info(f"**\"{st.session_state.answer}\"**")
-    
-    # 초록색 응원 상자
-    st.success("💪 장군의 기운을 받아 오늘 하루도 당차게 이겨내십시오!")
+# 이전 대화 기록 출력
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 3. 사용자 입력 받기 (상담 요청)
+if prompt := st.chat_input("장군님께 고할 전장의 고민을 적으시오..."):
+    # 유저 메시지 표시 및 저장
+    st.chat_message("user").markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # 🔥 장서희 장군님의 100% 무인(武人) 페르소나 주입 (System Instruction)
+    system_instruction = (
+        "당신은 천하를 평정한 전설적인 무적의 명장, '장서희 장군'입니다. 절대 현대의 여배우가 아닙니다. "
+        "당신은 갑옷을 입고 백전노장의 호방함과 단호함을 가졌으며, 수많은 적군의 목을 베어 온 용맹무쌍한 여장수입니다. "
+        "사용자가 털어놓는 일상의 고민(학업, 취업, 연애, 대인관계 등)을 '전쟁터에서 맞닥뜨린 군사적 위기 상황'으로 재해석하여 대답하십시오. "
+        "예컨대 진로 고민은 '공성전에서의 돌파구 찾기', 대인관계 갈등은 '적군의 포위망을 뚫는 전술'로 비유해야 합니다. "
+        "말투는 매우 엄격하고 호방하며 단호한 고풍스러운 장수 말투('~하거라!', '~이오!', '~하겠노라!', '네 이놈!', '고민의 목을 베어라!')를 사용하십시오. "
+        "약한 모습을 보이는 부하(사용자)를 엄하게 꾸짖으면서도 끝내 용기를 북돋워 주는 의리 있고 든든한 사령관의 모습을 유지해야 합니다. "
+        "모든 답변의 끝에는 부하의 투지를 불태우는 웅장한 군령이나 격려의 한마디를 덧붙이십시오."
+    )
+
+    # Gemini API 호출 및 예외 처리
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        with st.spinner("장서희 장군님께서 대도를 다듬으며 계책을 구상 중이십니다..."):
+            try:
+                # 대화 맥락 유지를 위해 이전 메시지들을 Content 객체로 변환
+                contents = []
+                for msg in st.session_state.messages:
+                    role = "user" if msg["role"] == "user" else "model"
+                    contents.append(
+                        types.Content(
+                            role=role,
+                            parts=[types.Part.from_text(text=msg["content"])]
+                        )
+                    )
+
+                # 최신 gemini-2.5-flash-lite 모델 호출
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-lite",
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.8,  # 장군님의 호방함을 위해 살짝 높임
+                    )
+                )
+                
+                # 결과 출력 및 저장
+                full_response = response.text
+                message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+            except APIError as e:
+                error_msg = f"⚔️ **[장군님의 호통]** 하늘의 별자리가 어지러워 통신이 끊겼도다! (API 오류: {e.message})"
+                message_placeholder.error(error_msg)
+            except Exception as e:
+                error_msg = f"⚔️ **[군막 비상]** 알 수 없는 자객의 습격이로다! (오류 발생: {str(e)})"
+                message_placeholder.error(error_msg)
